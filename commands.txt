@@ -1,0 +1,17 @@
+LOAD CSV WITH HEADERS FROM 'file:///movie.csv' AS row MERGE (m:movie {name: row.name, release_period: row.release_period, remake: row.remake, franchise: row.franchise, genre:row.genre, screens: toInteger(row.screens), revenue: toInteger(row.revenue), budget:toInteger(row.budget)});
+
+CREATE CONSTRAINT ON (m:movie) ASSERT m.name IS UNIQUE;
+
+LOAD CSV WITH HEADERS FROM 'file:///director_movie.csv' AS row MERGE (d:director {name: row.director}) MERGE (m:movie {name: row.movie}) MERGE (d)-[r:direct {new_director: row.new_director}]->(m);
+
+LOAD CSV WITH HEADERS FROM 'file:///actor_movie.csv' AS row MERGE (a:actor {name: row.actor}) MERGE (m:movie {name: row.movie}) MERGE (a)-[r:act_in {new_actor: row.new_actor}]->(m);
+
+MATCH (n)
+DETACH DELETE n
+
+
+MATCH (a:actor {name: "Aamir Khan"}) --> (m:movie) RETURN sum(m.revenue)
+
+MATCH (a:actor) -[r:act_in {new_actor: "Yes"}]-> (m:movie) RETURN a.name, m.name, m.revenue ORDER BY m.revenue DESC
+
+MATCH (d:director) -[r:direct {new_director: "Yes"}]-> (m:movie) RETURN d.name, m.name, m.revenue ORDER BY m.revenue DESC
