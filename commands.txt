@@ -15,3 +15,13 @@ MATCH (a:actor {name: "Aamir Khan"}) --> (m:movie) RETURN sum(m.revenue)
 MATCH (a:actor) -[r:act_in {new_actor: "Yes"}]-> (m:movie) RETURN a.name, m.name, m.revenue ORDER BY m.revenue DESC
 
 MATCH (d:director) -[r:direct {new_director: "Yes"}]-> (m:movie) RETURN d.name, m.name, m.revenue ORDER BY m.revenue DESC
+
+MATCH (a:actor) --> (m:movie) <-- (d:director) RETURN a.name, COUNT(DISTINCT(m.name)) AS num_collab, d.name ORDER BY num_collab DESC 
+
+MATCH (a:actor) --> (m:movie {genre: "thriller"}) RETURN a.name, COUNT(DISTINCT(m.name)) AS Thriller ORDER BY Thriller DESC 
+
+MATCH (a:actor) --> (m:movie {genre: "horror"}) RETURN a.name, COUNT(DISTINCT(m.name)) AS Horror ORDER BY Horror DESC 
+
+Emraan Hashmi
+
+MATCH (m:movie) RETURN m.name, m.release_period, m.revenue, m.screens, toFloat(m.revenue/m.screens) AS revenue_per_screen ORDER BY revenue_per_screen DESC
