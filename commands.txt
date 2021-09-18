@@ -1,21 +1,28 @@
-LOAD CSV WITH HEADERS FROM 'file:///movie.csv' AS row MERGE (m:movie {name: row.name, release_period: row.release_period, remake: row.remake, franchise: row.franchise, genre:row.genre, screens: toInteger(row.screens), revenue: toInteger(row.revenue), budget:toInteger(row.budget)});
+LOAD CSV WITH HEADERS FROM 'file:///movie.csv' 
+AS row MERGE (m:movie {name: row.name, release_period: row.release_period, remake: row.remake, franchise: row.franchise, genre:row.genre, screens: toInteger(row.screens), revenue: toInteger(row.revenue), budget:toInteger(row.budget)});
 
 CREATE CONSTRAINT ON (m:movie) ASSERT m.name IS UNIQUE;
 
-LOAD CSV WITH HEADERS FROM 'file:///director_movie.csv' AS row MERGE (d:director {name: row.director}) MERGE (m:movie {name: row.movie}) MERGE (d)-[r:direct {new_director: row.new_director}]->(m);
+LOAD CSV WITH HEADERS FROM 'file:///director_movie.csv' 
+AS row MERGE (d:director {name: row.director}) MERGE (m:movie {name: row.movie}) MERGE (d)-[r:direct {new_director: row.new_director}]->(m);
 
-LOAD CSV WITH HEADERS FROM 'file:///actor_movie.csv' AS row MERGE (a:actor {name: row.actor}) MERGE (m:movie {name: row.movie}) MERGE (a)-[r:act_in {new_actor: row.new_actor}]->(m);
+LOAD CSV WITH HEADERS FROM 'file:///actor_movie.csv' 
+AS row MERGE (a:actor {name: row.actor}) MERGE (m:movie {name: row.movie}) MERGE (a)-[r:act_in {new_actor: row.new_actor}]->(m);
 
 CREATE CONSTRAINT ON (a:actor) ASSERT a.name IS UNIQUE;
 CREATE CONSTRAINT ON (d:director) ASSERT d.name IS UNIQUE;
 
+//clear the database
 MATCH (n)
 DETACH DELETE n
+DROP CONSTRAINT ON (m:movie) ASSERT m.name IS UNIQUE;
+DROP CONSTRAINT ON (a:actor) ASSERT a.name IS UNIQUE;
+DROP CONSTRAINT ON (d:director) ASSERT d.name IS UNIQUE;
 
 
 MATCH (a:actor {name: "Aamir Khan"}) --> (m:movie) RETURN sum(m.revenue)
 
-MATCH (a:actor) -[r:act_in {new_actor: "Yes"}]-> (m:movie) RETURN a.name, m.name, m.revenue ORDER BY m.revenue DESC
+MATCH (a:actor) -[r:act_in {new_actor: "Yes"}]-> (m:movie) RETURN a.name, m.name, m.revenue ORDER BY m.revenue DESC LIMIT 10;
 
 MATCH (d:director) -[r:direct {new_director: "Yes"}]-> (m:movie) RETURN d.name, m.name, m.revenue ORDER BY m.revenue DESC
 
