@@ -14,7 +14,7 @@ CREATE CONSTRAINT ON (d:director) ASSERT d.name IS UNIQUE;
 
 //clear the database
 MATCH (n)
-DETACH DELETE n
+DETACH DELETE n;
 DROP CONSTRAINT ON (m:movie) ASSERT m.name IS UNIQUE;
 DROP CONSTRAINT ON (a:actor) ASSERT a.name IS UNIQUE;
 DROP CONSTRAINT ON (d:director) ASSERT d.name IS UNIQUE;
@@ -28,10 +28,47 @@ MATCH (d:director) -[r:direct {new_director: "Yes"}]-> (m:movie) RETURN d.name, 
 
 MATCH (a:actor) --> (m:movie) <-- (d:director) RETURN a.name, COUNT(DISTINCT(m.name)) AS num_collab, d.name ORDER BY num_collab DESC 
 
-MATCH (a:actor) --> (m:movie {genre: "thriller"}) RETURN a.name, COUNT(DISTINCT(m.name)) AS Thriller ORDER BY Thriller DESC 
+MATCH (a:actor) --> (m:movie {genre: "thriller"}) RETURN a.name, COUNT(DISTINCT(m.name)) AS Thriller ORDER BY Thriller DESC LIMIT 10;
 
 MATCH (a:actor) --> (m:movie {genre: "horror"}) RETURN a.name, COUNT(DISTINCT(m.name)) AS Horror ORDER BY Horror DESC 
 
 Emraan Hashmi
 
 MATCH (m:movie) RETURN m.name, m.release_period, m.revenue, m.screens, toFloat(m.revenue/m.screens) AS revenue_per_screen ORDER BY revenue_per_screen DESC
+
+
+
+community detection
+
+CALL gds.graph.create.cypher(
+    'bollywood-graph',
+    'MATCH (n) RETURN id(n) AS id',
+    'MATCH (n)--(m) RETURN id(n) AS source, id(m) AS target'
+)
+
+
+CALL gds.wcc.stream('bollywood-graph')
+YIELD nodeId, componentId
+RETURN  componentId, COUNT(componentId) as count
+ORDER BY count DESC LIMIT 10;
+
+
+CALL gds.wcc.stream('bollywood-graph')
+YIELD nodeId, componentId
+WHERE componentId = 0
+RETURN  gds.util.asNode(nodeId).name AS name, componentId ORDER BY name;
+
+
+
+CALL gds.wcc.stream('bollywood-graph')
+YIELD nodeId, componentId
+WHERE componentId = 0
+RETURN  DISTINCT(gds.util.asNode(nodeId).name) AS name, componentId ORDER BY name;
+
+CALL gds.wcc.stream('bollywood-graph')
+YIELD nodeId, componentId
+WHERE componentId = 0
+WITH  COLLECT(DISTINCT(gds.util.asNode(nodeId).name)) AS name_list
+MATCH path=(a:actor) --> (m:movie) <--(d:director)
+WHERE (a.name IN name_list) AND (m.name IN name_list) AND (d.name IN name_list)
+RETURN path LIMIT 2000;
