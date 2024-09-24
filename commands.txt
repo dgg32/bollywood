@@ -1,7 +1,8 @@
+// data import
 LOAD CSV WITH HEADERS FROM 'file:///movie.csv' 
 AS row MERGE (m:movie {name: row.name, release_period: row.release_period, remake: row.remake, franchise: row.franchise, genre:row.genre, screens: toInteger(row.screens), revenue: toInteger(row.revenue), budget:toInteger(row.budget)});
 
-CREATE CONSTRAINT ON (m:movie) ASSERT m.name IS UNIQUE;
+CREATE CONSTRAINT movie_name FOR (m:movie) REQUIRE m.name IS UNIQUE;
 
 LOAD CSV WITH HEADERS FROM 'file:///director_movie.csv' 
 AS row MERGE (d:director {name: row.director}) MERGE (m:movie {name: row.movie}) MERGE (d)-[r:direct {new_director: row.new_director}]->(m);
@@ -9,38 +10,72 @@ AS row MERGE (d:director {name: row.director}) MERGE (m:movie {name: row.movie})
 LOAD CSV WITH HEADERS FROM 'file:///actor_movie.csv' 
 AS row MERGE (a:actor {name: row.actor}) MERGE (m:movie {name: row.movie}) MERGE (a)-[r:act_in {new_actor: row.new_actor}]->(m);
 
-CREATE CONSTRAINT ON (a:actor) ASSERT a.name IS UNIQUE;
-CREATE CONSTRAINT ON (d:director) ASSERT d.name IS UNIQUE;
 
-//clear the database
+CREATE CONSTRAINT actor_name FOR (a:actor) REQUIRE a.name IS UNIQUE;
+CREATE CONSTRAINT director_name FOR (d:director) REQUIRE d.name IS UNIQUE;
+
+//Cautions: the following commands clear the database
 MATCH (n)
 DETACH DELETE n;
-DROP CONSTRAINT ON (m:movie) ASSERT m.name IS UNIQUE;
-DROP CONSTRAINT ON (a:actor) ASSERT a.name IS UNIQUE;
-DROP CONSTRAINT ON (d:director) ASSERT d.name IS UNIQUE;
+DROP CONSTRAINT movie_name;
+DROP CONSTRAINT actor_name;
+DROP CONSTRAINT director_name;
+// End of clearing
 
 
+
+// overview in bloom
+MATCH p=(a:actor) -->(m:movie) <--(d:director) RETURN p;
+
+//Return the total revenue of Aamir Khan's movies
 MATCH (a:actor {name: "Aamir Khan"}) --> (m:movie) RETURN sum(m.revenue)
 
+//Or the equivalent
+MATCH (a:actor) --> (m:movie) WHERE a.name = "Aamir Khan" RETURN sum(m.revenue)
+
+//Filter on relation, order by and limit
 MATCH (a:actor) -[r:act_in {new_actor: "Yes"}]-> (m:movie) RETURN a.name, m.name, m.revenue ORDER BY m.revenue DESC LIMIT 10;
 
+//Similar example
 MATCH (d:director) -[r:direct {new_director: "Yes"}]-> (m:movie) RETURN d.name, m.name, m.revenue ORDER BY m.revenue DESC
 
+// DISTINCT and simple statistics
 MATCH (a:actor) --> (m:movie) <-- (d:director) RETURN a.name, COUNT(DISTINCT(m.name)) AS num_collab, d.name ORDER BY num_collab DESC 
 
+// Another example of DISTINCT
 MATCH (a:actor) --> (m:movie {genre: "thriller"}) RETURN a.name, COUNT(DISTINCT(m.name)) AS Thriller ORDER BY Thriller DESC LIMIT 10;
 
-MATCH (a:actor) --> (m:movie {genre: "horror"}) RETURN a.name, COUNT(DISTINCT(m.name)) AS Horror ORDER BY Horror DESC 
+// Simple arithmetics, movies by revenues
+MATCH (a:actor) --> (m:movie) 
+RETURN a.name, m.name, m.revenue, m.budget, m.revenue/m.budget as rb_ratio 
+ORDER BY m.revenue DESC LIMIT 10;
+
+//box office bombs
+MATCH (m:movie) 
+RETURN m.name, m.revenue, m.budget, m.revenue - m.budget AS profit 
+ORDER BY profit LIMIT 10;
+
+// actor has the most horror movies
+MATCH (a:actor) --> (m:movie {genre: "horror"}) RETURN a.name, COUNT(DISTINCT(m.name)) AS Horror ORDER BY Horror DESC
 
 Emraan Hashmi
 
 MATCH (m:movie) RETURN m.name, m.release_period, m.revenue, m.screens, toFloat(m.revenue/m.screens) AS revenue_per_screen ORDER BY revenue_per_screen DESC
 
 
+// WITH statements, groupby, how many movies in each genre absolutely and relatively
+MATCH (m:movie) 
+WITH COUNT(m.name) AS total 
+
+MATCH (m:movie) 
+WITH m.genre AS genre_name, COUNT(DISTINCT(m.name)) as genre_count, total
+
+RETURN genre_name, genre_count, 100*genre_count/total AS genre_percentage
+ORDER BY genre_percentage DESC
 
 community detection
 
-CALL gds.graph.create.cypher(
+CALL gds.graph.project.cypher(
     'bollywood-graph',
     'MATCH (n) RETURN id(n) AS id',
     'MATCH (n)--(m) RETURN id(n) AS source, id(m) AS target'
