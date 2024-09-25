@@ -10,7 +10,6 @@ AS row MERGE (d:director {name: row.director}) MERGE (m:movie {name: row.movie})
 LOAD CSV WITH HEADERS FROM 'file:///actor_movie.csv' 
 AS row MERGE (a:actor {name: row.actor}) MERGE (m:movie {name: row.movie}) MERGE (a)-[r:act_in {new_actor: row.new_actor}]->(m);
 
-
 CREATE CONSTRAINT actor_name FOR (a:actor) REQUIRE a.name IS UNIQUE;
 CREATE CONSTRAINT director_name FOR (d:director) REQUIRE d.name IS UNIQUE;
 

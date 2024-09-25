@@ -1,0 +1,80 @@
+// write data to graph
+LOAD CSV WITH HEADERS FROM 'file:///movie.csv' 
+AS row MERGE (m:movie {name: row.name, release_period: row.release_period, remake: row.remake, franchise: row.franchise, genre:row.genre, screens: toInteger(row.screens), revenue: toInteger(row.revenue), budget:toInteger(row.budget)});
+
+CREATE CONSTRAINT movie_name FOR (m:movie) REQUIRE m.name IS UNIQUE;
+
+LOAD CSV WITH HEADERS FROM 'file:///director_movie.csv' 
+AS row MERGE (d:director {name: row.director}) MERGE (m:movie {name: row.movie}) MERGE (d)-[r:direct {new_director: row.new_director}]->(m);
+
+LOAD CSV WITH HEADERS FROM 'file:///actor_movie.csv' 
+AS row MERGE (a:actor {name: row.actor}) MERGE (m:movie {name: row.movie}) MERGE (a)-[r:act_in {new_actor: row.new_actor}]->(m);
+
+CREATE CONSTRAINT actor_name FOR (a:actor) REQUIRE a.name IS UNIQUE;
+CREATE CONSTRAINT director_name FOR (d:director) REQUIRE d.name IS UNIQUE;
+
+
+
+MATCH (a:actor) RETURN a LIMIT 5;
+
+
+MATCH p=(a:actor) -->(m:movie) RETURN p LIMIT 5;
+MATCH p=(a:actor) -->(m:movie) <--(d:director) RETURN p LIMIT 5;
+
+MATCH (a:actor) -->(m:movie) RETURN a.name LIMIT 5;
+
+
+MATCH (a:actor) WHERE a.name = "Aamir Khan" RETURN a
+MATCH (a:actor {name: "Aamir Khan"}) WHERE RETURN a
+
+// aggregate
+MATCH (a:actor {name: "Aamir Khan"}) --> (m:movie) RETURN sum(m.revenue)
+
+
+MATCH (a:actor) --> (m:movie) <-- (d:director) 
+RETURN a.name as actor, d.name AS director, COUNT(DISTINCT(m.name)) AS num_collab 
+ORDER BY num_collab DESC LIMIT 10;
+
+// group by
+MATCH (a:actor) --> (m:movie) RETURN a.name, sum(m.revenue) LIMIT 5;
+
+MATCH (a:actor) --> (m:movie) RETURN a.name, sum(m.revenue) AS actor_revenue ORDER BY actor_revenue DESC LIMIT 5;
+
+
+MATCH (m:movie)
+RETURN m.name, m.revenue, m.budget, m.revenue - m.budget AS profit
+ORDER BY profit LIMIT 10;
+
+
+
+MATCH (a:actor {name: "Aamir Khan"}) --> (m:movie)
+WITH sum(m.revenue) AS total
+
+MATCH (a:actor {name: "Aamir Khan"}) --> (m:movie)
+RETURN m.name, 100*m.revenue/total
+
+
+
+// use parameter
+:params favorite_actor => 'Aamir Khan'
+
+
+MATCH (a:actor {name: $favorite_actor}) --> (m:movie)
+WITH sum(m.revenue) AS total
+MATCH (a:actor {name: $favorite_actor}) --> (m:movie)
+RETURN m.name, 100*m.revenue/total
+
+
+
+// WITH subqueries
+
+MATCH (m:movie)
+WITH COUNT(m.name) AS total
+
+MATCH (m:movie)
+WITH m.genre AS genre_name, COUNT(DISTINCT(m.name)) as genre_count, total
+
+RETURN genre_name, genre_count, 100*genre_count/total AS genre_percentage
+ORDER BY genre_percentage DESC
+
+
