@@ -89,20 +89,29 @@ ORDER BY count DESC LIMIT 10;
 
 CALL gds.wcc.stream('bollywood-graph')
 YIELD nodeId, componentId
-WHERE componentId = 0
-RETURN  gds.util.asNode(nodeId).name AS name, componentId ORDER BY name;
-
-
-
-CALL gds.wcc.stream('bollywood-graph')
-YIELD nodeId, componentId
-WHERE componentId = 0
+WHERE componentId = 1
 RETURN  DISTINCT(gds.util.asNode(nodeId).name) AS name, componentId ORDER BY name;
 
+
+CALL gds.wcc.mutate('bollywood-graph', { mutateProperty: 'community_id' })
+YIELD nodePropertiesWritten, componentCount;
+
+
+CALL gds.wcc.write('bollywood-graph', { writeProperty: 'community_id' })
+YIELD nodePropertiesWritten, componentCount;
+
+
 CALL gds.wcc.stream('bollywood-graph')
 YIELD nodeId, componentId
-WHERE componentId = 0
+WHERE componentId = 1
 WITH  COLLECT(DISTINCT(gds.util.asNode(nodeId).name)) AS name_list
 MATCH path=(a:actor) --> (m:movie) <--(d:director)
 WHERE (a.name IN name_list) AND (m.name IN name_list) AND (d.name IN name_list)
 RETURN path LIMIT 2000;
+
+
+
+CALL gds.betweenness.stream('bollywood-graph')
+YIELD nodeId, score
+RETURN gds.util.asNode(nodeId).name AS name, score
+ORDER BY name ASC
